@@ -1,21 +1,12 @@
 /// <reference path="../../../__typings__/index.d.ts"/>
 import path from 'path'
-import { createGitResolver } from '@pnpm/git-resolver'
-import git from 'graceful-git'
+import { createGitResolver } from '../src'
 import isWindows from 'is-windows'
-import { fetch } from '@pnpm/fetch'
+import { getCommitFromRef, git } from '../src/git'
 
 const resolveFromGit = createGitResolver({})
 
-function mockFetchAsPrivate (): void {
-  type Fetch = typeof fetch
-  type MockedFetch = jest.MockedFunction<Fetch>
-  (fetch as MockedFetch).mockImplementation(async (_url, _opts) => {
-    return { ok: false } as any // eslint-disable-line @typescript-eslint/no-explicit-any
-  })
-}
-
-test('resolveFromGit() with commit', async () => {
+test('with commit', async () => {
   const resolveResult = await resolveFromGit({ pref: 'zkochan/is-negative#163360a8d3ae6bee9524541043197ff356f8ed99' })
   expect(resolveResult).toStrictEqual({
     id: 'https://codeload.github.com/zkochan/is-negative/tar.gz/163360a8d3ae6bee9524541043197ff356f8ed99',
@@ -27,7 +18,7 @@ test('resolveFromGit() with commit', async () => {
   })
 })
 
-test('resolveFromGit() with no commit', async () => {
+test('with no commit', async () => {
   const resolveResult = await resolveFromGit({ pref: 'zkochan/is-negative' })
   expect(resolveResult).toStrictEqual({
     id: 'https://codeload.github.com/zkochan/is-negative/tar.gz/1d7e288222b53a0cab90a331f1865220ec29560c',
@@ -39,7 +30,7 @@ test('resolveFromGit() with no commit', async () => {
   })
 })
 
-test('resolveFromGit() with no commit, when main branch is not master', async () => {
+test('with no commit, when main branch is not master', async () => {
   const resolveResult = await resolveFromGit({ pref: 'zoli-forks/cmd-shim' })
   expect(resolveResult).toStrictEqual({
     id: 'https://codeload.github.com/zoli-forks/cmd-shim/tar.gz/a00a83a1593edb6e395d3ce41f2ef70edf7e2cf5',
@@ -51,7 +42,7 @@ test('resolveFromGit() with no commit, when main branch is not master', async ()
   })
 })
 
-test('resolveFromGit() with partial commit', async () => {
+test('with partial commit', async () => {
   const resolveResult = await resolveFromGit({ pref: 'zoli-forks/cmd-shim#a00a83a' })
   expect(resolveResult).toStrictEqual({
     id: 'https://codeload.github.com/zoli-forks/cmd-shim/tar.gz/a00a83a',
@@ -63,7 +54,7 @@ test('resolveFromGit() with partial commit', async () => {
   })
 })
 
-test('resolveFromGit() with branch', async () => {
+test('with branch', async () => {
   const resolveResult = await resolveFromGit({ pref: 'zkochan/is-negative#canary' })
   expect(resolveResult).toStrictEqual({
     id: 'https://codeload.github.com/zkochan/is-negative/tar.gz/4c39fbc124cd4944ee51cb082ad49320fab58121',
@@ -75,7 +66,7 @@ test('resolveFromGit() with branch', async () => {
   })
 })
 
-test('resolveFromGit() with branch relative to refs', async () => {
+test('with branch relative to refs', async () => {
   const resolveResult = await resolveFromGit({ pref: 'zkochan/is-negative#heads/canary' })
   expect(resolveResult).toStrictEqual({
     id: 'https://codeload.github.com/zkochan/is-negative/tar.gz/4c39fbc124cd4944ee51cb082ad49320fab58121',
@@ -87,7 +78,7 @@ test('resolveFromGit() with branch relative to refs', async () => {
   })
 })
 
-test('resolveFromGit() with tag', async () => {
+test('with tag', async () => {
   const resolveResult = await resolveFromGit({ pref: 'zkochan/is-negative#2.0.1' })
   expect(resolveResult).toStrictEqual({
     id: 'https://codeload.github.com/zkochan/is-negative/tar.gz/2fa0531ab04e300a24ef4fd7fb3a280eccb7ccc5',
@@ -99,7 +90,7 @@ test('resolveFromGit() with tag', async () => {
   })
 })
 
-test.skip('resolveFromGit() with tag (v-prefixed tag)', async () => {
+test.skip('with tag (v-prefixed tag)', async () => {
   const resolveResult = await resolveFromGit({ pref: 'andreineculau/npm-publish-git#v0.0.7' })
   expect(resolveResult).toStrictEqual({
     id: 'https://codeload.github.com/andreineculau/npm-publish-git/tar.gz/a2f8d94562884e9529cb12c0818312ac87ab7f0b',
@@ -111,7 +102,7 @@ test.skip('resolveFromGit() with tag (v-prefixed tag)', async () => {
   })
 })
 
-test('resolveFromGit() with strict semver', async () => {
+test('with strict semver', async () => {
   const resolveResult = await resolveFromGit({ pref: 'zkochan/is-negative#semver:1.0.0' })
   expect(resolveResult).toStrictEqual({
     id: 'https://codeload.github.com/zkochan/is-negative/tar.gz/163360a8d3ae6bee9524541043197ff356f8ed99',
@@ -123,7 +114,7 @@ test('resolveFromGit() with strict semver', async () => {
   })
 })
 
-test.skip('resolveFromGit() with strict semver (v-prefixed tag)', async () => {
+test.skip('with strict semver (v-prefixed tag)', async () => {
   const resolveResult = await resolveFromGit({ pref: 'andreineculau/npm-publish-git#semver:v0.0.7' })
   expect(resolveResult).toStrictEqual({
     id: 'https://codeload.github.com/andreineculau/npm-publish-git/tar.gz/a2f8d94562884e9529cb12c0818312ac87ab7f0b',
@@ -135,7 +126,7 @@ test.skip('resolveFromGit() with strict semver (v-prefixed tag)', async () => {
   })
 })
 
-test('resolveFromGit() with range semver', async () => {
+test('with range semver', async () => {
   const resolveResult = await resolveFromGit({ pref: 'zkochan/is-negative#semver:^1.0.0' })
   expect(resolveResult).toStrictEqual({
     id: 'https://codeload.github.com/zkochan/is-negative/tar.gz/9a89df745b2ec20ae7445d3d9853ceaeef5b0b72',
@@ -147,7 +138,7 @@ test('resolveFromGit() with range semver', async () => {
   })
 })
 
-test.skip('resolveFromGit() with range semver (v-prefixed tag)', async () => {
+test.skip('with range semver (v-prefixed tag)', async () => {
   const resolveResult = await resolveFromGit({ pref: 'andreineculau/npm-publish-git#semver:<=v0.0.7' })
   expect(resolveResult).toStrictEqual({
     id: 'https://codeload.github.com/andreineculau/npm-publish-git/tar.gz/a2f8d94562884e9529cb12c0818312ac87ab7f0b',
@@ -159,7 +150,7 @@ test.skip('resolveFromGit() with range semver (v-prefixed tag)', async () => {
   })
 })
 
-test('resolveFromGit() with sub folder', async () => {
+test('with sub folder', async () => {
   const resolveResult = await resolveFromGit({ pref: 'github:RexSkz/test-git-subfolder-fetch.git#path:/packages/simple-react-app' })
   expect(resolveResult).toStrictEqual({
     id: 'https://codeload.github.com/RexSkz/test-git-subfolder-fetch/tar.gz/2b42a57a945f19f8ffab8ecbd2021fdc2c58ee22#path:/packages/simple-react-app',
@@ -172,7 +163,7 @@ test('resolveFromGit() with sub folder', async () => {
   })
 })
 
-test('resolveFromGit() with both sub folder and branch', async () => {
+test('with both sub folder and branch', async () => {
   const resolveResult = await resolveFromGit({ pref: 'github:RexSkz/test-git-subfolder-fetch.git#beta&path:/packages/simple-react-app' })
   expect(resolveResult).toStrictEqual({
     id: 'https://codeload.github.com/RexSkz/test-git-subfolder-fetch/tar.gz/777e8a3e78cc89bbf41fb3fd9f6cf922d5463313#path:/packages/simple-react-app',
@@ -185,19 +176,19 @@ test('resolveFromGit() with both sub folder and branch', async () => {
   })
 })
 
-test('resolveFromGit() fails when ref not found', async () => {
+test('fails when ref not found', async () => {
   await expect(
     resolveFromGit({ pref: 'zkochan/is-negative#bad-ref' })
   ).rejects.toThrow(/Could not resolve bad-ref to a commit of (https|git):\/\/github.com\/zkochan\/is-negative.git./)
 })
 
-test('resolveFromGit() fails when semver ref not found', async () => {
+test('fails when semver ref not found', async () => {
   await expect(
     resolveFromGit({ pref: 'zkochan/is-negative#semver:^100.0.0' })
   ).rejects.toThrow(/Could not resolve \^100.0.0 to a commit of (https|git):\/\/github.com\/zkochan\/is-negative.git. Available versions are: 1.0.0, 1.0.1, 2.0.0, 2.0.1, 2.0.2, 2.1.0/)
 })
 
-test('resolveFromGit() with commit from non-github repo', async () => {
+test('with commit from non-github repo', async () => {
   // TODO: make it pass on Windows
   if (isWindows()) {
     return
@@ -217,10 +208,9 @@ test('resolveFromGit() with commit from non-github repo', async () => {
 })
 
 // TODO: make it pass on CI servers
-test.skip('resolveFromGit() with commit from non-github repo with no commit', async () => {
+test.skip('with commit from non-github repo with no commit', async () => {
   const localPath = path.resolve('..', '..')
-  const result = await git(['rev-parse', 'origin/master'], { retries: 0 })
-  const hash: string = result.stdout.trim()
+  const hash = git('rev-parse origin/master').trim()
   const resolveResult = await resolveFromGit({ pref: `git+file://${localPath}` })
   expect(resolveResult).toStrictEqual({
     id: `git+file://${localPath}#${hash}`,
@@ -234,7 +224,7 @@ test.skip('resolveFromGit() with commit from non-github repo with no commit', as
   })
 })
 
-test('resolveFromGit() bitbucket with commit', async () => {
+test('bitbucket with commit', async () => {
   // TODO: make it pass on Windows
   if (isWindows()) {
     return
@@ -250,10 +240,9 @@ test('resolveFromGit() bitbucket with commit', async () => {
   })
 })
 
-test('resolveFromGit() bitbucket with no commit', async () => {
+test('bitbucket with no commit', async () => {
   const resolveResult = await resolveFromGit({ pref: 'bitbucket:pnpmjs/git-resolver' })
-  const result = await git(['ls-remote', '--refs', 'https://bitbucket.org/pnpmjs/git-resolver.git', 'master'], { retries: 0 })
-  const hash: string = result.stdout.trim().split('\t')[0]
+  const hash = getCommitFromRef('https://bitbucket.org/pnpmjs/git-resolver.git', 'master')
   expect(resolveResult).toStrictEqual({
     id: `https://bitbucket.org/pnpmjs/git-resolver/get/${hash}.tar.gz`,
     normalizedPref: 'bitbucket:pnpmjs/git-resolver',
@@ -264,10 +253,9 @@ test('resolveFromGit() bitbucket with no commit', async () => {
   })
 })
 
-test('resolveFromGit() bitbucket with branch', async () => {
+test('bitbucket with branch', async () => {
   const resolveResult = await resolveFromGit({ pref: 'bitbucket:pnpmjs/git-resolver#master' })
-  const result = await git(['ls-remote', '--refs', 'https://bitbucket.org/pnpmjs/git-resolver.git', 'master'], { retries: 0 })
-  const hash: string = result.stdout.trim().split('\t')[0]
+  const hash = getCommitFromRef('https://bitbucket.org/pnpmjs/git-resolver.git', 'master')
   expect(resolveResult).toStrictEqual({
     id: `https://bitbucket.org/pnpmjs/git-resolver/get/${hash}.tar.gz`,
     normalizedPref: 'bitbucket:pnpmjs/git-resolver#master',
@@ -278,7 +266,7 @@ test('resolveFromGit() bitbucket with branch', async () => {
   })
 })
 
-test('resolveFromGit() bitbucket with tag', async () => {
+test('bitbucket with tag', async () => {
   const resolveResult = await resolveFromGit({ pref: 'bitbucket:pnpmjs/git-resolver#0.3.4' })
   expect(resolveResult).toStrictEqual({
     id: 'https://bitbucket.org/pnpmjs/git-resolver/get/87cf6a67064d2ce56e8cd20624769a5512b83ff9.tar.gz',
@@ -290,7 +278,7 @@ test('resolveFromGit() bitbucket with tag', async () => {
   })
 })
 
-test('resolveFromGit() gitlab with colon in the URL', async () => {
+test('gitlab with colon in the URL', async () => {
   const resolveResult = await resolveFromGit({
     pref: 'ssh://git@gitlab:pnpm/git-resolver#988c61e11dc8d9ca0b5580cb15291951812549dc',
   })
@@ -307,7 +295,7 @@ test('resolveFromGit() gitlab with colon in the URL', async () => {
   })
 })
 
-test('resolveFromGit() gitlab with commit', async () => {
+test('gitlab with commit', async () => {
   const resolveResult = await resolveFromGit({
     pref: 'gitlab:pnpm/git-resolver#988c61e11dc8d9ca0b5580cb15291951812549dc',
   })
@@ -323,20 +311,11 @@ test('resolveFromGit() gitlab with commit', async () => {
   })
 })
 
-test('resolveFromGit() gitlab with no commit', async () => {
+test('gitlab with no commit', async () => {
   const resolveResult = await resolveFromGit({
     pref: 'gitlab:pnpm/git-resolver',
   })
-  const result = await git(
-    [
-      'ls-remote',
-      '--refs',
-      'https://gitlab.com/pnpm/git-resolver.git',
-      'master',
-    ],
-    { retries: 0 }
-  )
-  const hash: string = result.stdout.trim().split('\t')[0]
+  const hash = getCommitFromRef('https://gitlab.com/pnpm/git-resolver.git', 'master')
   expect(resolveResult).toStrictEqual({
     id: `https://gitlab.com/api/v4/projects/pnpm%2Fgit-resolver/repository/archive.tar.gz?sha=${hash}`,
     normalizedPref: 'gitlab:pnpm/git-resolver',
@@ -347,20 +326,11 @@ test('resolveFromGit() gitlab with no commit', async () => {
   })
 })
 
-test('resolveFromGit() gitlab with branch', async () => {
+test('gitlab with branch', async () => {
   const resolveResult = await resolveFromGit({
     pref: 'gitlab:pnpm/git-resolver#master',
   })
-  const result = await git(
-    [
-      'ls-remote',
-      '--refs',
-      'https://gitlab.com/pnpm/git-resolver.git',
-      'master',
-    ],
-    { retries: 0 }
-  )
-  const hash: string = result.stdout.trim().split('\t')[0]
+  const hash = getCommitFromRef('https://gitlab.com/pnpm/git-resolver.git', 'master')
   expect(resolveResult).toStrictEqual({
     id: `https://gitlab.com/api/v4/projects/pnpm%2Fgit-resolver/repository/archive.tar.gz?sha=${hash}`,
     normalizedPref: 'gitlab:pnpm/git-resolver#master',
@@ -371,7 +341,7 @@ test('resolveFromGit() gitlab with branch', async () => {
   })
 })
 
-test('resolveFromGit() gitlab with tag', async () => {
+test('gitlab with tag', async () => {
   const resolveResult = await resolveFromGit({
     pref: 'gitlab:pnpm/git-resolver#0.3.4',
   })
@@ -386,7 +356,7 @@ test('resolveFromGit() gitlab with tag', async () => {
   })
 })
 
-test('resolveFromGit() normalizes full url', async () => {
+test('normalizes full url', async () => {
   const resolveResult = await resolveFromGit({ pref: 'git+ssh://git@github.com:zkochan/is-negative.git#2.0.1' })
   expect(resolveResult).toStrictEqual({
     id: 'https://codeload.github.com/zkochan/is-negative/tar.gz/2fa0531ab04e300a24ef4fd7fb3a280eccb7ccc5',
@@ -398,7 +368,7 @@ test('resolveFromGit() normalizes full url', async () => {
   })
 })
 
-test('resolveFromGit() normalizes full url with port', async () => {
+test('normalizes full url with port', async () => {
   const resolveResult = await resolveFromGit({ pref: 'git+ssh://git@github.com:22:zkochan/is-negative.git#2.0.1' })
   expect(resolveResult).toStrictEqual({
     id: 'https://codeload.github.com/zkochan/is-negative/tar.gz/2fa0531ab04e300a24ef4fd7fb3a280eccb7ccc5',
@@ -410,7 +380,7 @@ test('resolveFromGit() normalizes full url with port', async () => {
   })
 })
 
-test('resolveFromGit() normalizes full url (alternative form)', async () => {
+test('normalizes full url (alternative form)', async () => {
   const resolveResult = await resolveFromGit({ pref: 'git+ssh://git@github.com/zkochan/is-negative.git#2.0.1' })
   expect(resolveResult).toStrictEqual({
     id: 'https://codeload.github.com/zkochan/is-negative/tar.gz/2fa0531ab04e300a24ef4fd7fb3a280eccb7ccc5',
@@ -422,143 +392,13 @@ test('resolveFromGit() normalizes full url (alternative form)', async () => {
   })
 })
 
-test('resolveFromGit() normalizes full url (alternative form 2)', async () => {
+test('normalizes full url (alternative form 2)', async () => {
   const resolveResult = await resolveFromGit({ pref: 'https://github.com/zkochan/is-negative.git#2.0.1' })
   expect(resolveResult).toStrictEqual({
     id: 'https://codeload.github.com/zkochan/is-negative/tar.gz/2fa0531ab04e300a24ef4fd7fb3a280eccb7ccc5',
     normalizedPref: 'github:zkochan/is-negative#2.0.1',
     resolution: {
       tarball: 'https://codeload.github.com/zkochan/is-negative/tar.gz/2fa0531ab04e300a24ef4fd7fb3a280eccb7ccc5',
-    },
-    resolvedVia: 'git-repository',
-  })
-})
-
-// This test relies on implementation detail.
-// current implementation does not try git ls-remote --refs on pref with full commit hash, this fake repo url will pass.
-test('resolveFromGit() private repo with commit hash', async () => {
-  mockFetchAsPrivate()
-  const resolveResult = await resolveFromGit({ pref: 'fake/private-repo#2fa0531ab04e300a24ef4fd7fb3a280eccb7ccc5' })
-  expect(resolveResult).toStrictEqual({
-    id: 'git+ssh://git@github.com/fake/private-repo.git#2fa0531ab04e300a24ef4fd7fb3a280eccb7ccc5',
-    normalizedPref: 'github:fake/private-repo#2fa0531ab04e300a24ef4fd7fb3a280eccb7ccc5',
-    resolution: {
-      commit: '2fa0531ab04e300a24ef4fd7fb3a280eccb7ccc5',
-      repo: 'git+ssh://git@github.com/fake/private-repo.git',
-      type: 'git',
-    },
-    resolvedVia: 'git-repository',
-  })
-})
-
-test('resolve a private repository using the HTTPS protocol without auth token', async () => {
-  git.mockImplementation(async (args: string[]) => {
-    expect(args).toContain('git+ssh://git@github.com/foo/bar.git')
-    if (args.includes('--refs')) {
-      return {
-        stdout: `\n${'a'.repeat(40)}\trefs/heads/master\n`,
-      }
-    }
-    return {
-      stdout: '0'.repeat(40) + '\tHEAD',
-    }
-  })
-  mockFetchAsPrivate()
-  const resolveResult = await resolveFromGit({ pref: 'git+https://github.com/foo/bar.git' })
-  expect(resolveResult).toStrictEqual({
-    id: 'git+ssh://git@github.com/foo/bar.git#0000000000000000000000000000000000000000',
-    normalizedPref: 'github:foo/bar',
-    resolution: {
-      commit: '0000000000000000000000000000000000000000',
-      repo: 'git+ssh://git@github.com/foo/bar.git',
-      type: 'git',
-    },
-    resolvedVia: 'git-repository',
-  })
-})
-
-test('resolve a private repository using the HTTPS protocol and an auth token', async () => {
-  const sha = '0'.repeat(40)
-  git.mockImplementation(async (args: string[]) => {
-    expect(args).toContain(`https://${sha}:x-oauth-basic@github.com/foo/bar.git`)
-    if (args.includes('--refs')) {
-      return {
-        stdout: '\
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\trefs/heads/master\
-',
-      }
-    }
-    return { stdout: `${sha}\tHEAD` }
-  })
-  mockFetchAsPrivate()
-  const resolveResult = await resolveFromGit({ pref: `git+https://${sha}:x-oauth-basic@github.com/foo/bar.git` })
-  expect(resolveResult).toStrictEqual({
-    id: `git+https://${sha}:x-oauth-basic@github.com/foo/bar.git#${sha}`,
-    normalizedPref: 'github:foo/bar',
-    resolution: {
-      commit: sha,
-      repo: `https://${sha}:x-oauth-basic@github.com/foo/bar.git`,
-      type: 'git',
-    },
-    resolvedVia: 'git-repository',
-  })
-})
-
-test('resolve an internal repository using SSH protocol with range semver', async () => {
-  git.mockImplementation(async (args: string[]) => {
-    expect(args).toContain('ssh://git@example.com/org/repo.git')
-    if (args.includes('--refs')) {
-      return {
-        stdout: '\
-ed3de20970d980cf21a07fd8b8732c70d5182303\trefs/tags/v0.0.38\n\
-cba04669e621b85fbdb33371604de1a2898e68e9\trefs/tags/v0.0.39\
-',
-      }
-    }
-    return {
-      stdout: '0000000000000000000000000000000000000000\tHEAD\n\
-ed3de20970d980cf21a07fd8b8732c70d5182303\trefs/tags/v0.0.38\n\
-cba04669e621b85fbdb33371604de1a2898e68e9\trefs/tags/v0.0.39',
-    }
-  })
-  const resolveResult = await resolveFromGit({ pref: 'git+ssh://git@example.com/org/repo.git#semver:~0.0.38' })
-  expect(resolveResult).toStrictEqual({
-    id: 'git+ssh://git@example.com/org/repo.git#cba04669e621b85fbdb33371604de1a2898e68e9',
-    normalizedPref: 'git+ssh://git@example.com/org/repo.git#semver:~0.0.38',
-    resolution: {
-      commit: 'cba04669e621b85fbdb33371604de1a2898e68e9',
-      repo: 'ssh://git@example.com/org/repo.git',
-      type: 'git',
-    },
-    resolvedVia: 'git-repository',
-  })
-})
-
-test('resolve an internal repository using SSH protocol with range semver and SCP-like URL', async () => {
-  git.mockImplementation(async (args: string[]) => {
-    expect(args).toContain('ssh://git@example.com/org/repo.git')
-    if (args.includes('--refs')) {
-      return {
-        stdout: '\
-ed3de20970d980cf21a07fd8b8732c70d5182303\trefs/tags/v0.0.38\n\
-cba04669e621b85fbdb33371604de1a2898e68e9\trefs/tags/v0.0.39\
-',
-      }
-    }
-    return {
-      stdout: '0000000000000000000000000000000000000000\tHEAD\n\
-ed3de20970d980cf21a07fd8b8732c70d5182303\trefs/tags/v0.0.38\n\
-cba04669e621b85fbdb33371604de1a2898e68e9\trefs/tags/v0.0.39',
-    }
-  })
-  const resolveResult = await resolveFromGit({ pref: 'git+ssh://git@example.com:org/repo.git#semver:~0.0.38' })
-  expect(resolveResult).toStrictEqual({
-    id: 'git+ssh://git@example.com/org/repo.git#cba04669e621b85fbdb33371604de1a2898e68e9',
-    normalizedPref: 'git+ssh://git@example.com:org/repo.git#semver:~0.0.38',
-    resolution: {
-      commit: 'cba04669e621b85fbdb33371604de1a2898e68e9',
-      repo: 'ssh://git@example.com/org/repo.git',
-      type: 'git',
     },
     resolvedVia: 'git-repository',
   })
