@@ -423,3 +423,4 @@ test('normalizes full url (alternative form 2)', async () => {
     resolvedVia: 'git-repository',
   })
 })
+
